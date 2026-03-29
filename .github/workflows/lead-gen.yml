@@ -3,7 +3,16 @@ name: Lead Gen Agent
 on:
   schedule:
     - cron: '0 13 * * 1,3,5'   # Mon/Wed/Fri 8:00 AM ET (UTC-5 = 13:00 UTC)
-  workflow_dispatch:             # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no emails sent, no Monday.com writes)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   run-agent:
@@ -43,7 +52,7 @@ jobs:
           MONDAY_LEAD_BOARD_ID: ${{ secrets.MONDAY_LEAD_BOARD_ID }}
           MAX_NEW_OUTREACH_PER_RUN: 20
           MAX_FOLLOWUP_PER_RUN: 30
-          DRY_RUN: false
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
 
       - name: Upload leads database
         uses: actions/upload-artifact@v4
