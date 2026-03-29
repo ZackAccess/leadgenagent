@@ -1,0 +1,23 @@
+# Environment
+.env
+
+# Database and persistent state
+data/
+logs/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# Editor
+.vscode/
+.idea/
+*.swp
