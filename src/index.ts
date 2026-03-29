@@ -156,6 +156,7 @@ async function discoverAndContact(run: ReturnType<typeof db.startRun>): Promise<
         contact_name: raw.contactName ?? null,
         contact_title: raw.contactTitle ?? null,
         email: raw.email,
+        phone: raw.phone ?? null,
         website: raw.website ?? null,
         city: raw.city,
         province: raw.province,

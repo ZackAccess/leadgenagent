@@ -11,6 +11,7 @@ export interface Lead {
   contact_name: string | null;
   contact_title: string | null;
   email: string;
+  phone: string | null;
   website: string | null;
   city: string | null;
   province: string | null;
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS leads (
   contact_name TEXT,
   contact_title TEXT,
   email TEXT NOT NULL,
+  phone TEXT,
   website TEXT,
   city TEXT,
   province TEXT,
@@ -124,8 +126,8 @@ class DB {
     const id = uuidv4();
     const now = new Date().toISOString();
     this.db.prepare(`
-      INSERT INTO leads (id, company_name, contact_name, contact_title, email, website, city, province, country, industry, language, opportunity_reason, source_url, status, created_at, updated_at)
-      VALUES (@id, @company_name, @contact_name, @contact_title, @email, @website, @city, @province, @country, @industry, @language, @opportunity_reason, @source_url, 'discovered', @now, @now)
+      INSERT INTO leads (id, company_name, contact_name, contact_title, email, phone, website, city, province, country, industry, language, opportunity_reason, source_url, status, created_at, updated_at)
+      VALUES (@id, @company_name, @contact_name, @contact_title, @email, @phone, @website, @city, @province, @country, @industry, @language, @opportunity_reason, @source_url, 'discovered', @now, @now)
     `).run({ id, ...data, now });
     return this.getLead(id)!;
   }

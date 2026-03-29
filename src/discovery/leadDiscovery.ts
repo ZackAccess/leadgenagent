@@ -74,7 +74,8 @@ export async function discoverLeads(): Promise<RawLead[]> {
   const response = await client.messages.create({
     model: config.claudeModel,
     max_tokens: 4096,
-    tools: [{ type: 'web_search_20250305' as const, name: 'web_search' }],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tools: [{ type: 'web_search_20250305', name: 'web_search' } as any],
     system: SYSTEM_PROMPT,
     messages: [
       {
