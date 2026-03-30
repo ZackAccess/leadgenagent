@@ -82,15 +82,15 @@ export async function discoverLeads(): Promise<RawLead[]> {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       response = await client.messages.create({
-        model: config.claudeModel,
+        model: 'claude-haiku-4-5',  // Haiku: lower cost, higher rate limits than Sonnet
         max_tokens: 3000,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tools: [{ type: 'web_search_20250305', name: 'web_search' } as any],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 } as any],
         system: SYSTEM_PROMPT,
         messages: [
           {
             role: 'user',
-            content: `Search angle for this session: "${angle}"\n\nFind 8–10 commercial signage leads using web search. Focus on businesses that have a clear, specific reason they'd need signage soon. Return only a JSON array.`,
+            content: `Search angle for this session: "${angle}"\n\nFind 5–8 commercial signage leads using web search. You have a maximum of 5 searches — use them wisely. Focus on businesses that have a clear, specific reason they'd need signage soon. Return only a JSON array.`,
           },
         ],
       });

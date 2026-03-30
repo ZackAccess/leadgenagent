@@ -49,7 +49,7 @@ async function claudeLanguageDetect(params: {
 
   try {
     const response = await client.messages.create({
-      model: config.claudeModel,
+      model: 'claude-haiku-4-5',
       max_tokens: 200,
       messages: [
         {

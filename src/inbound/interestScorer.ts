@@ -57,7 +57,7 @@ Unsubscribe intent includes: "remove me", "unsubscribe", "ne pas contacter", "d√
 
   try {
     const response = await client.messages.create({
-      model: config.claudeModel,
+      model: 'claude-haiku-4-5',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
