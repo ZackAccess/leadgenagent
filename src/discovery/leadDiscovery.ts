@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { sleep } from '../utils/retry';
 
 export interface RawLead {
   companyName: string;
@@ -38,9 +39,9 @@ const SYSTEM_PROMPT = `You are a lead researcher for Access Signs Inc., a commer
 
 These include: companies that recently moved or opened new offices, new retail locations, commercial construction projects, franchise expansions, hotels, medical clinics, industrial tenants, and real estate developments.
 
-Search for 15–20 specific leads per session. For each lead you MUST find a real, specific email address — this is the most important field. Use web search to visit the company's website, look for a Contact page, About page, or team page. Look for formats like info@, contact@, hello@, admin@, or a named person's email. Also check LinkedIn, Google Maps listings, and industry directories.
+Search for 8–10 specific leads per session. For each lead you MUST find a real, specific email address — this is the most important field. Use web search to visit the company's website, look for a Contact page, About page, or team page. Look for formats like info@, contact@, hello@, admin@, or a named person's email. Also check LinkedIn, Google Maps listings, and industry directories.
 
-DO NOT include a lead if you cannot find or confidently construct a real email address. It is better to return 8 leads with real emails than 20 leads with no emails.
+DO NOT include a lead if you cannot find or confidently construct a real email address. It is better to return 5 leads with real emails than 10 leads with no emails.
 
 For each lead provide:
 - company name
@@ -76,19 +77,36 @@ export async function discoverLeads(): Promise<RawLead[]> {
 
   logger.info('Starting lead discovery', { searchAngle: angle });
 
-  const response = await client.messages.create({
-    model: config.claudeModel,
-    max_tokens: 4096,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tools: [{ type: 'web_search_20250305', name: 'web_search' } as any],
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Search angle for this session: "${angle}"\n\nFind 15–20 commercial signage leads using web search. Focus on businesses that have a clear, specific reason they'd need signage soon. Return only a JSON array.`,
-      },
-    ],
-  });
+  // Retry up to 3 times with 90s backoff on rate limit errors
+  let response;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await client.messages.create({
+        model: config.claudeModel,
+        max_tokens: 3000,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tools: [{ type: 'web_search_20250305', name: 'web_search' } as any],
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Search angle for this session: "${angle}"\n\nFind 8–10 commercial signage leads using web search. Focus on businesses that have a clear, specific reason they'd need signage soon. Return only a JSON array.`,
+          },
+        ],
+      });
+      break;
+    } catch (err: unknown) {
+      const msg = String(err);
+      if (msg.includes('429') && attempt < 3) {
+        logger.warn(`Rate limit hit on attempt ${attempt} — waiting 90s before retry`);
+        await sleep(90000);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (!response) throw new Error('Lead discovery failed after retries');
 
   // Extract the final text block which should be the JSON array
   const textBlocks = response.content.filter((b) => b.type === 'text');
