@@ -38,11 +38,16 @@ const SYSTEM_PROMPT = `You are a lead researcher for Access Signs Inc., a commer
 
 These include: companies that recently moved or opened new offices, new retail locations, commercial construction projects, franchise expansions, hotels, medical clinics, industrial tenants, and real estate developments.
 
-Search for 15–20 specific leads per session. For each lead, provide:
+Search for 15–20 specific leads per session. For each lead you MUST find a real, specific email address — this is the most important field. Use web search to visit the company's website, look for a Contact page, About page, or team page. Look for formats like info@, contact@, hello@, admin@, or a named person's email. Also check LinkedIn, Google Maps listings, and industry directories.
+
+DO NOT include a lead if you cannot find or confidently construct a real email address. It is better to return 8 leads with real emails than 20 leads with no emails.
+
+For each lead provide:
 - company name
-- likely contact name and title (e.g. Operations Manager, Facilities Manager, Owner)
-- email if findable
-- website
+- contact name and title (e.g. Operations Manager, Facilities Manager, Owner) — search the website or LinkedIn
+- a real email address — search the website Contact/About page, check Google, check LinkedIn
+- website URL
+- phone number if visible on their website
 - city, province, country
 - industry
 - a specific reason why they likely need signage right now
@@ -52,7 +57,7 @@ Return results as a JSON array only, with no additional text. Each object must m
   "companyName": string,
   "contactName": string | null,
   "contactTitle": string | null,
-  "email": string | null,
+  "email": string,
   "website": string | null,
   "phone": string | null,
   "city": string,
@@ -63,7 +68,7 @@ Return results as a JSON array only, with no additional text. Each object must m
   "sourceUrl": string
 }
 
-Only include leads with a real email address or where one could reasonably be found. Skip leads with no actionable contact information.`;
+CRITICAL: Every object in the array must have a real, non-null email address. If you cannot find an email for a company, skip it entirely.`;
 
 export async function discoverLeads(): Promise<RawLead[]> {
   const client = new Anthropic({ apiKey: config.anthropicApiKey });

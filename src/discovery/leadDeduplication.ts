@@ -9,7 +9,7 @@ export function filterDuplicates(leads: RawLead[]): RawLead[] {
   for (const lead of leads) {
     // Skip leads with no email — can't do outreach without one
     if (!lead.email) {
-      logger.debug('Skipping lead with no email', { company: lead.companyName });
+      logger.info('Skipping lead — no email found', { company: lead.companyName });
       continue;
     }
 
