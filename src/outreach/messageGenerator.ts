@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { sleep } from '../utils/retry';
 
 export interface MessageInput {
   companyName: string;
@@ -75,12 +76,26 @@ The body should be under 150 words. No signature — that gets added separately.
 
 Return JSON only: { "subject": "...", "body": "..." }`;
 
-  const response = await client.messages.create({
-    model: config.claudeModel,
-    max_tokens: 600,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  let response;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await client.messages.create({
+        model: config.claudeModel,
+        max_tokens: 600,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      break;
+    } catch (err: unknown) {
+      if (String(err).includes('429') && attempt < 3) {
+        logger.warn(`Rate limit on message generation attempt ${attempt} — waiting 60s`);
+        await sleep(60000);
+      } else {
+        throw err;
+      }
+    }
+  }
+  if (!response) throw new Error(`Message generation failed after retries for ${input.companyName}`);
 
   const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();

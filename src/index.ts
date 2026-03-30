@@ -141,6 +141,12 @@ async function discoverAndContact(run: ReturnType<typeof db.startRun>): Promise<
   const toContact = enriched.slice(0, config.agent.maxNewOutreachPerRun);
   logger.info('New leads to contact', { total: enriched.length, capped: toContact.length });
 
+  if (toContact.length > 0) {
+    // Allow token bucket to refill after heavy discovery call
+    logger.info('Pausing 60s after discovery to avoid rate limits...');
+    await sleep(60000);
+  }
+
   for (const raw of toContact) {
     try {
       const language = await detectLanguage({
@@ -193,9 +199,11 @@ async function discoverAndContact(run: ReturnType<typeof db.startRun>): Promise<
         logger.info('New lead contacted', { company: lead.company_name, language, email: lead.email });
       }
 
-      await sleep(500);
+      // Pause between leads to avoid rate limits on Claude calls
+      await sleep(15000);
     } catch (err) {
       logger.error('Failed to process new lead', { company: raw.companyName, error: String(err) });
+      await sleep(15000);
     }
   }
 }
