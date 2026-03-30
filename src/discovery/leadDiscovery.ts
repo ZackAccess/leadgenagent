@@ -39,21 +39,26 @@ const SYSTEM_PROMPT = `You are a lead researcher for Access Signs Inc., a commer
 
 These include: companies that recently moved or opened new offices, new retail locations, commercial construction projects, franchise expansions, hotels, medical clinics, industrial tenants, and real estate developments.
 
-Search for 8–10 specific leads per session. For each lead you MUST find a real, specific email address — this is the most important field. Use web search to visit the company's website, look for a Contact page, About page, or team page. Look for formats like info@, contact@, hello@, admin@, or a named person's email. Also check LinkedIn, Google Maps listings, and industry directories.
+Search for 5–8 specific leads per session. You have a maximum of 5 web searches — use them efficiently by searching broadly first, then visiting 1–2 promising company websites.
 
-DO NOT include a lead if you cannot find or confidently construct a real email address. It is better to return 5 leads with real emails than 10 leads with no emails.
+For each lead, provide an email address using this priority order:
+1. A real email found on their website Contact/About page (best)
+2. A real email found via Google or a directory listing
+3. A best-guess email constructed from their website domain — e.g. if website is acmecorp.com, use info@acmecorp.com or contact@acmecorp.com
+
+Every lead MUST have either a real website URL or an email. Skip a lead only if you cannot find their website AND cannot find any email.
 
 For each lead provide:
 - company name
-- contact name and title (e.g. Operations Manager, Facilities Manager, Owner) — search the website or LinkedIn
-- a real email address — search the website Contact/About page, check Google, check LinkedIn
+- contact name and title if findable (e.g. Operations Manager, Facilities Manager, Owner)
+- email address (real or best-guess from domain — see above)
 - website URL
-- phone number if visible on their website
+- phone number if visible
 - city, province, country
 - industry
 - a specific reason why they likely need signage right now
 
-Return results as a JSON array only, with no additional text. Each object must match this shape:
+Return results as a JSON array only, with no additional text before or after. Each object must match this shape exactly:
 {
   "companyName": string,
   "contactName": string | null,
@@ -67,9 +72,7 @@ Return results as a JSON array only, with no additional text. Each object must m
   "industry": string,
   "signageOpportunityReason": string,
   "sourceUrl": string
-}
-
-CRITICAL: Every object in the array must have a real, non-null email address. If you cannot find an email for a company, skip it entirely.`;
+}`;
 
 export async function discoverLeads(): Promise<RawLead[]> {
   const client = new Anthropic({ apiKey: config.anthropicApiKey });
@@ -82,7 +85,7 @@ export async function discoverLeads(): Promise<RawLead[]> {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       response = await client.messages.create({
-        model: 'claude-haiku-4-5',  // Haiku: lower cost, higher rate limits than Sonnet
+        model: config.claudeModel,
         max_tokens: 3000,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 } as any],
