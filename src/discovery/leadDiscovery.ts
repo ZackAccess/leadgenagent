@@ -99,13 +99,29 @@ export async function discoverLeads(): Promise<RawLead[]> {
 
   const rawText = textBlocks[textBlocks.length - 1].text.trim();
 
-  // Strip markdown code fences if present
-  const jsonText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  // Extract JSON array from response — handles three cases:
+  // 1. Claude wraps it in ```json ... ```
+  // 2. Claude adds intro text before the code block
+  // 3. Claude returns the array directly
+  function extractJsonArray(text: string): string {
+    // Try extracting from a ```json ... ``` block first
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (codeBlockMatch) return codeBlockMatch[1].trim();
+
+    // Try finding a raw JSON array anywhere in the text
+    const arrayMatch = text.match(/(\[[\s\S]*\])/);
+    if (arrayMatch) return arrayMatch[1].trim();
+
+    // Return as-is and let JSON.parse surface the error
+    return text;
+  }
+
+  const jsonText = extractJsonArray(rawText);
 
   try {
     const leads: RawLead[] = JSON.parse(jsonText);
     const validLeads = leads
-      .filter((l) => l.companyName && l.city && l.province)
+      .filter((l) => l.companyName && l.city && l.province && l.email)
       .map((l) => ({ ...l, discoveredAt: new Date().toISOString() }));
 
     logger.info('Lead discovery complete', { found: validLeads.length });
