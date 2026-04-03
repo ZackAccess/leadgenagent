@@ -115,12 +115,13 @@ async function sendFollowUps(run: ReturnType<typeof db.startRun>): Promise<void>
         toName: lead.contact_name,
         subject: message.subject,
         body: message.body,
+        bodyText: message.bodyText,
       });
 
       if (result.success) {
         const nextFollowUp = getNextFollowUpDate(lead.outreach_count + 1);
         const newStatus = lead.outreach_count + 1 >= 4 ? 'no_response' : getStatusAfterSend(lead.outreach_count + 1);
-        db.recordOutreach(lead.id, message.subject, message.body, result.messageId, nextFollowUp, newStatus);
+        db.recordOutreach(lead.id, message.subject, message.bodyText ?? message.body, result.messageId, nextFollowUp, newStatus);
         run.followUpsSent++;
         sent++;
         logger.info('Follow-up sent', { company: lead.company_name, step, status: newStatus });
@@ -189,11 +190,12 @@ async function discoverAndContact(run: ReturnType<typeof db.startRun>): Promise<
         toName: lead.contact_name,
         subject: message.subject,
         body: message.body,
+        bodyText: message.bodyText,
       });
 
       if (result.success) {
         const nextFollowUp = getNextFollowUpDate(1);
-        db.recordOutreach(lead.id, message.subject, message.body, result.messageId, nextFollowUp, 'contacted');
+        db.recordOutreach(lead.id, message.subject, message.bodyText ?? message.body, result.messageId, nextFollowUp, 'contacted');
         run.newLeadsFound++;
         run.outreachSent++;
         logger.info('New lead contacted', { company: lead.company_name, language, email: lead.email });
@@ -225,8 +227,18 @@ async function runLeadGenAgent(): Promise<void> {
 
     // STEP 1: Check inbound replies
     logger.info('Step 1: Checking inbox for replies...');
-    const replies = await checkInbox();
-    await processInboundReplies(replies, run);
+    try {
+      const replies = await checkInbox();
+      await processInboundReplies(replies, run);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes('403') || msg.includes('AccessDenied')) {
+        logger.warn('Inbox check skipped — Graph API access denied. Verify Mail.ReadWrite permission and admin consent in Azure Portal.', { error: msg });
+      } else {
+        logger.error('Inbox check failed', { error: msg });
+      }
+      // Non-fatal — continue with follow-ups and discovery
+    }
 
     // STEP 2: Send due follow-ups
     logger.info('Step 2: Sending follow-ups...');
