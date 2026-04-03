@@ -48,17 +48,20 @@ export interface SendResult {
   success: boolean;
 }
 
-export async function sendEmail(params: {
+export interface SendEmailParams {
   toEmail: string;
   toName: string | null;
   subject: string;
   body: string;
-}): Promise<SendResult> {
+  bodyText?: string;
+}
+
+export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
   if (config.agent.dryRun) {
     logger.info('[DRY RUN] Would send email', {
       to: params.toEmail,
       subject: params.subject,
-      bodyPreview: params.body.slice(0, 100),
+      bodyPreview: (params.bodyText ?? params.body).slice(0, 100),
     });
     return { messageId: `dry-run-${Date.now()}`, success: true };
   }
@@ -72,7 +75,7 @@ export async function sendEmail(params: {
         message: {
           subject: params.subject,
           body: {
-            contentType: 'Text',
+            contentType: 'HTML',
             content: params.body,
           },
           toRecipients: [
@@ -102,8 +105,6 @@ export async function sendEmail(params: {
         throw new Error(`sendMail failed: ${resp.status} ${text}`);
       }
 
-      // Graph sendMail returns 202 with no body — message ID is not returned here.
-      // We store a timestamp-based placeholder for correlation.
       const messageId = `sent-${Date.now()}`;
       logger.info('Email sent', { to: params.toEmail, subject: params.subject });
       return { messageId, success: true };
